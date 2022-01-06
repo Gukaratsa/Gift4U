@@ -20,6 +20,7 @@ namespace Gift4U.BlazorApp
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
+                    webBuilder.UseUrls("https://localhost:5001");
                     webBuilder.UseStartup<Startup>();
                 });
     }

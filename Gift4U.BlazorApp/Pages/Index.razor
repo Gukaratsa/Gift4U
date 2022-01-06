@@ -1,7 +1,27 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+<h1>Saadut lahjat</h1>
+@foreach (var gift in gifts)
+{
+    <img src="@gift.ImageSource" width="400"/>
+    <br/>
+    <p>
+        @gift.GiftName - @gift.GiftAmount @gift.GiftUnit
+    </p>
+}
 
-Welcome to your new app.
-
-<SurveyPrompt Title="How is Blazor working for you?" />
+@code {
+    private IEnumerable<GiftModel> gifts = new GiftModel[]
+        {
+            new GiftModel(){ 
+                ImageSource = "images/ExampleImage_1.png",
+                GiftName = "Example Gift 1",
+                GiftAmount = "48",
+                GiftUnit = "pce" },
+            new GiftModel(){ 
+                ImageSource = "images/ExampleImage_2.png",
+                GiftName = "Example Gift 2",
+                GiftAmount = "6",
+                GiftUnit = "pce" }
+        };
+}
