@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Gift4U.BlazorApp.Data;
+using Gift4U.BlazorApp.Store;
 
 namespace Gift4U.BlazorApp
 {
@@ -29,6 +30,7 @@ namespace Gift4U.BlazorApp
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
+            services.AddSingleton<CounterStore>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
