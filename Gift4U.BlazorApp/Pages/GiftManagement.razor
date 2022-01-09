@@ -1,6 +1,7 @@
 ﻿@page "/gifts"
 @inject UserService _userService
 @inject GiftService _giftService
+@using Infrastructure
 
 
 <PageTitle>Gift management</PageTitle>
@@ -33,18 +34,19 @@
 <br/>
 
 <h2>Add gift</h2>
-<EditForm Model="@gift" OnValidSubmit="@HandleValidSubmit">
+<EditForm Model="@gift" OnValidSubmit="@HandleValidGiftSubmit">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <table>
-        <tbody>
+        <tbody>   
             <tr>
                 <td style="text-align:right">Image: </td>
-                <td><InputText id="firstName" placeholder="First name" @bind-Value="gift.ImageSource" /></td>
-            </tr>     
+                <InputFile OnChange="@LoadFile"/>
+                <img src="data:image/png;base64, @loadedImageBase64" />
+            </tr>
             <tr>
                 <td style="text-align:right">Name: </td>
-                <td><InputText id="lastName" placeholder="Last name" @bind-Value="gift.GiftName" /></td>
+                <td><InputText id="lastName" placeholder="Name of the gift" @bind-Value="gift.GiftName" /></td>
             </tr>
             <tr>
                 <td style="text-align:right">Duration: </td>
@@ -61,13 +63,14 @@
 </EditForm>
 <br/>
 
-<!--
+
 <h2>Registered gifts</h2>
 <table>
     <thead>
         <tr>
-            <th> First Name </th>
-            <th> Last Name </th>
+            <th> Image </th>
+            <th> Name </th>
+            <th> Duration </th>
             <th> Delete </th>
         </tr>
     </thead>
@@ -75,7 +78,7 @@
         @foreach(var gift in _giftService.GetGifts())
         {
             <tr>
-                <td> <img src="@gift.Image" width="200"/></td>
+                <td> <img src="data:image/png;base64, @gift.Image" height="64"/></td>
                 <td>@gift.Name</td>
                 <td>@gift.Duration</td>
                 <td><button @onclick="() => DeleteGift(gift)">X</button></td>
@@ -85,6 +88,7 @@
 </table>
 <br/>
 
+<!--
 <h2>Give gift</h2>
 <EditForm Model="@user" OnValidSubmit="@HandleValidSubmit">
     <DataAnnotationsValidator />
@@ -176,6 +180,12 @@
 @code {
     private LoginUserModel loginUser = new();
     private GiftModel gift = new();
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 16777216; //1024 * 15;
+    private int maxAllowedFiles = 3;
+    private bool isLoading;
+    private string loadedImageBase64;
+    private string loadedThumbnailBase64;
 
     private void HandleValidLogin()
     {
@@ -185,9 +195,54 @@
 
     private void Logout() => _userService.Logout();
 
-    private void HandleValidSubmit()
+    private async Task LoadFile(InputFileChangeEventArgs e)
     {
+        isLoading = true;
+        loadedFiles.Clear();
 
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+
+                var tempFileName = "temp.png";
+                await using FileStream fs = new(tempFileName, FileMode.Create);
+                await file.OpenReadStream(maxFileSize).CopyToAsync(fs);
+                fs.Close();
+                await fs.DisposeAsync();
+                loadedImageBase64 = ImageConverter.ImageToBase64(tempFileName);
+                loadedThumbnailBase64 = ImageConverter.ImageToBase64(tempFileName, 300, 300);
+                System.IO.File.Delete(tempFileName);
+
+                //loadedFiles.Add(file);
+
+                //var trustedFileNameForFileStorage = Path.GetRandomFileName();
+                //var path = Path.Combine(Environment.ContentRootPath,
+                //        Environment.EnvironmentName, "unsafe_uploads",
+                //        trustedFileNameForFileStorage);
+
+
+                //await using FileStream fs = new(path, FileMode.Create);
+                //await file.OpenReadStream(maxFileSize).CopyToAsync(fs);
+            }
+            catch (Exception ex)
+            {
+                //Logger.LogError("File: {Filename} Error: {Error}", 
+                //    file.Name, ex.Message);
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private void HandleValidImageSubmit()
+    {
+        ;
+    }
+
+    private void HandleValidGiftSubmit()
+    {
+        _giftService.AddGift(gift.GiftName, loadedImageBase64);
     }
 
     private void DeleteGift(Gift gift)

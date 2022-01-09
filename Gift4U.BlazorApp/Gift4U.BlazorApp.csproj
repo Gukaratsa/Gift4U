@@ -13,6 +13,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Design" Version="1.1.6" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.4" />
   </ItemGroup>
 
 </Project>

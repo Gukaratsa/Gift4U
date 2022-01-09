@@ -36,9 +36,14 @@ namespace Gift4U.Application.Services
 
         }
 
-        public void AddGift()
+        public void AddGift(string Name, string ImageBase64)
         {
-
+            _giftDBContext.Gifts.Add(new Gift() { 
+                Id = Guid.NewGuid(),
+                Name = Name,
+                Image = ImageBase64
+            });
+            _giftDBContext.SaveChanges();
         }
 
         public IEnumerable<Gift> GetGifts()
