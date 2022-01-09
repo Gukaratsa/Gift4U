@@ -1,0 +1,197 @@
+﻿@page "/gifts"
+@inject UserService _userService
+@inject GiftService _giftService
+
+
+<PageTitle>Gift management</PageTitle>
+<h2>Login</h2>
+@if(_userService.LoggedIn)
+{
+    <button type="button" @onclick="Logout">Logout</button>
+}
+@if(!_userService.LoggedIn)
+{
+    <EditForm Model="@loginUser" OnValidSubmit="@HandleValidLogin">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <table>
+            <tbody>
+                <tr>
+                    <td style="text-align:right">Email: </td>
+                    <td><InputText id="email" placeholder="name@email.com" @bind-Value="loginUser.Email" /></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right">Password: </td>
+                    <td><InputText type="password" placeholder="Password" @bind-Value="@loginUser.Password" /></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="submit">Login</button>
+    </EditForm>
+}
+<br/>
+
+<h2>Add gift</h2>
+<EditForm Model="@gift" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <table>
+        <tbody>
+            <tr>
+                <td style="text-align:right">Image: </td>
+                <td><InputText id="firstName" placeholder="First name" @bind-Value="gift.ImageSource" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Name: </td>
+                <td><InputText id="lastName" placeholder="Last name" @bind-Value="gift.GiftName" /></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Duration: </td>
+                <td><InputCheckbox  @bind-Value="gift.HasDuration"/></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Duration: </td>
+                <td><InputText @bind-Value="gift.Duration"/></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Submit</button>
+</EditForm>
+<br/>
+
+<!--
+<h2>Registered gifts</h2>
+<table>
+    <thead>
+        <tr>
+            <th> First Name </th>
+            <th> Last Name </th>
+            <th> Delete </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var gift in _giftService.GetGifts())
+        {
+            <tr>
+                <td> <img src="@gift.Image" width="200"/></td>
+                <td>@gift.Name</td>
+                <td>@gift.Duration</td>
+                <td><button @onclick="() => DeleteGift(gift)">X</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<br/>
+
+<h2>Give gift</h2>
+<EditForm Model="@user" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <table>
+        <tbody>
+            <tr>
+                <td style="text-align:right">First name: </td>
+                <td><InputText id="firstName" placeholder="First name" @bind-Value="user.FirstName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Last name: </td>
+                <td><InputText id="lastName" placeholder="Last name" @bind-Value="user.LastName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Email: </td>
+                <td><InputText id="email" placeholder="name@email.com" @bind-Value="user.Email" /></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Password: </td>
+                <td><InputText type="password" placeholder="Password" @bind-Value="@user.Password" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Submit</button>
+</EditForm>
+<br/>
+
+<h2>Requested gifts</h2>
+<EditForm Model="@user" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <table>
+        <tbody>
+            <tr>
+                <td style="text-align:right">First name: </td>
+                <td><InputText id="firstName" placeholder="First name" @bind-Value="user.FirstName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Last name: </td>
+                <td><InputText id="lastName" placeholder="Last name" @bind-Value="user.LastName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Email: </td>
+                <td><InputText id="email" placeholder="name@email.com" @bind-Value="user.Email" /></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Password: </td>
+                <td><InputText type="password" placeholder="Password" @bind-Value="@user.Password" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Submit</button>
+</EditForm>
+<br/>
+
+<h2>Pending gifts</h2>
+<EditForm Model="@user" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <table>
+        <tbody>
+            <tr>
+                <td style="text-align:right">First name: </td>
+                <td><InputText id="firstName" placeholder="First name" @bind-Value="user.FirstName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Last name: </td>
+                <td><InputText id="lastName" placeholder="Last name" @bind-Value="user.LastName" /></td>
+            </tr>     
+            <tr>
+                <td style="text-align:right">Email: </td>
+                <td><InputText id="email" placeholder="name@email.com" @bind-Value="user.Email" /></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Password: </td>
+                <td><InputText type="password" placeholder="Password" @bind-Value="@user.Password" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Submit</button>
+</EditForm>
+<br/>
+-->
+
+@code {
+    private LoginUserModel loginUser = new();
+    private GiftModel gift = new();
+
+    private void HandleValidLogin()
+    {
+        try { _userService.Login(loginUser.Email, loginUser.Password); }
+        catch (Exception ex) { Console.WriteLine(ex.ToString()); }
+    }
+
+    private void Logout() => _userService.Logout();
+
+    private void HandleValidSubmit()
+    {
+
+    }
+
+    private void DeleteGift(Gift gift)
+    {
+        _giftService.DeleteGift(gift);
+    }
+}

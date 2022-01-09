@@ -8,5 +8,7 @@ namespace Gift4U.BlazorApp.Data
         public string GiftName;
         public string GiftAmount;
         public string GiftUnit;
+        public bool HasDuration;
+        public string Duration;
     }
 }

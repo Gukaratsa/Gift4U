@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Gift4U.Domain.Models;
+using Gift4U.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gift4U.Application.Services
@@ -17,7 +18,7 @@ namespace Gift4U.Application.Services
         public UserService(GiftDBContext giftDBContext)
         {
             this._giftDBContext = giftDBContext;
-            giftDBContext?.Database.Migrate();
+            //giftDBContext?.Database.Migrate();
         }
 
         public void AddUser(string FirstName, string LastName, string EmailAddress, string Password)
@@ -25,13 +26,16 @@ namespace Gift4U.Application.Services
             if (_giftDBContext.Users.Count(u => u.Email == EmailAddress) > 0)
                 throw new ArgumentException($"User with email '{EmailAddress}' already registered");
 
+            var hashing = new HashingManager();
+            var hash = hashing.HashToString(Password);
+
             _giftDBContext.Users.Add(new User()
             {
                 Id = Guid.NewGuid(),
                 FirstName = FirstName,
                 LastName = LastName,
                 Email = EmailAddress,
-                Password = Password,
+                Password = hash,
                 CreatedDate = DateTime.Now,
                 IsEmailConfirmed = false
 
@@ -62,13 +66,26 @@ namespace Gift4U.Application.Services
 
         public bool Login(string email, string password)
         {
-            if (LoggedIn)
-                return LoggedIn;
+            //var hashing = new HashingManager();
+            //var hash = hashing.HashToString("test");
+            //var isValid = hashing.Verify("test", hash);
 
-            CurrentUser = _giftDBContext.Users.FirstOrDefault(u => u.Email == email && u.Password == password);
-            LoggedIn = CurrentUser != null;
             if (LoggedIn)
+                return false;
+
+            var UserToLogin = _giftDBContext.Users.FirstOrDefault(u => u.Email == email);
+            if (UserToLogin == null)
+                return false;
+
+            var hashing = new HashingManager();
+            var isValid = hashing.Verify(password, UserToLogin.Password);
+
+            if (isValid)
+            {
+                CurrentUser = UserToLogin;
+                LoggedIn = true;
                 LoginChanged?.Invoke(this, new EventArgs());
+            }
 
             return LoggedIn;
         }
