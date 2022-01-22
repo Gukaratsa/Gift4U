@@ -73,15 +73,21 @@ namespace Gift4U.Application.Services
 
         public IEnumerable<GivenGift> GetReceivedGifts(User receiver)
         {
+            // TODO This is the correct interface to request reeceived gifts
             return _giftDBContext.GivenGifts
                 .Where(gg => gg.ReceiverId == receiver.Id);
         }
 
-        public IEnumerable<Request> PendingRequests(User giftGiver)
+        public IEnumerable<Request> PendingRequests(Guid giftGiverId)
         {
-            return _giftDBContext.Requests.Where(r =>
-                r.GivenInRequest.GiverId == giftGiver.Id &&
-                r.RequestState.Name != nameof(RequestStateEnum.Pending));
+            _giftDBContext.Gifts.Load();
+            _giftDBContext.GivenGifts.Load();
+            _giftDBContext.RequestStates.Load();
+            _giftDBContext.Requests.Load();
+            var pendingState = _giftDBContext.RequestStates.First(rs => rs.Name == nameof(RequestStateEnum.Pending));
+            var givenGifts = _giftDBContext.Requests.Where(r => r.GivenInRequest.GiverId == giftGiverId);
+            var pendingGifts = givenGifts.Where(gg => gg.RequestStateId == pendingState.Id);
+            return pendingGifts;
         }
 
         public IEnumerable<Request> RequestsWaiting(User giftReceiver)
@@ -94,7 +100,8 @@ namespace Gift4U.Application.Services
         public void RequestGiftActivation(Guid givenGiftId)
         {
             var gift = _giftDBContext.GivenGifts.First(gg => gg.Id == givenGiftId);
-            var giftPending = _giftDBContext.Requests.First(r => r.GivenInRequestId == givenGiftId);
+            var pendingStatus = _giftDBContext.RequestStates.First(rs => rs.Name == nameof(RequestStateEnum.Pending));
+            var giftPending = _giftDBContext.Requests.FirstOrDefault(r => r.GivenInRequestId == givenGiftId && r.RequestStateId == pendingStatus.Id);
             if (giftPending != null)
             {
                 // Already pending
@@ -117,13 +124,24 @@ namespace Gift4U.Application.Services
 
         public void ResponseToGiftActivation(Request request, RequestStateEnum requestResponse)
         {
+            var requestName = Enum.GetName(typeof(RequestStateEnum), requestResponse);
             var pendingState = _giftDBContext.RequestStates
-                .Where(rs => rs.Name == nameof(requestResponse))
-                .First();
-
+                .First(rs => rs.Name == requestName);
             request.RequestState = pendingState;
             request.Responded = DateTime.Now;
             _giftDBContext.SaveChanges();
+        }
+
+        public IEnumerable<Request> RequestsAccepted(Guid giftReceiverId)
+        {
+            var approvedState = _giftDBContext.RequestStates
+             .Where(rs => rs.Name == nameof(RequestStateEnum.RequestApproved))
+             .First();
+            var result = _giftDBContext.Requests
+                .Where(r =>
+                    r.GivenInRequest.ReceiverId == giftReceiverId &&
+                    r.RequestStateId == approvedState.Id);
+            return result;
         }
 
         public void ActivateGift(Request request)

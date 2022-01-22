@@ -4,16 +4,48 @@
 
 @if(_userService.LoggedIn)
 {
-    <h1>Saadut lahjat</h1>
-    @foreach (var gift in gifts)
+    if (pendingRequests.Count() > 0)
     {
-        <div @onclick="@(() => ClickedOnReceivedGift(@gift.Id))">
-            <img src="data:image/png;base64, @gift.Gift.Image" width="400"/>
+        <h1>Odottavat pyynnöt</h1>
+        @foreach (var pendingRequest in pendingRequests)
+        {
+            <img src="data:image/png;base64, @pendingRequest.GivenInRequest.Gift.Image" width="400"/>
             <br/>
             <p>
-                @gift.Gift.Name - @gift.Amount
+                @pendingRequest.GivenInRequest.Receiver.Email is requesting @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Amount / WheresTheUsedAmount)
             </p>
-        </div>
+            <button type="button" @onclick="@(() => AcceptRequest(pendingRequest))">Accept</button>
+            <button type="button" @onclick="@(() => DeclineRequest(pendingRequest))">Decline</button>
+            <br/>
+        }
+    }
+    else if(acceptedRequests.Count() > 0)
+    {
+        <h1>Hyväksytyt pyynnöt</h1>
+        @foreach (var pendingRequest in acceptedRequests)
+        {
+            <img src="data:image/png;base64, @pendingRequest.GivenInRequest.Gift.Image" width="400"/>
+            <br/>
+            <p>
+                @pendingRequest.GivenInRequest.Receiver.Email is requesting @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Amount / WheresTheUsedAmount)
+            </p>
+            <button type="button" @onclick="@(() => StartAcceptRequest(pendingRequest))">Start</button>
+            <br/>
+        }
+    }
+    else
+    {
+        <h1>Saadut lahjat</h1>
+        @foreach (var gift in gifts)
+        {
+            <div @onclick="@(() => ClickedOnReceivedGift(@gift.Id))">
+                <img src="data:image/png;base64, @gift.Gift.Image" width="400"/>
+                <br/>
+                <p>
+                    @gift.Gift.Name - @gift.Amount
+                </p>
+            </div>
+        }
     }
     <button type="button" @onclick="Logout">Logout</button>
 }
@@ -44,6 +76,10 @@
 @code {
     private LoginUserModel loginUser = new();
     private IEnumerable<GivenGift> gifts;
+    private IEnumerable<Request> pendingRequests;
+    private IEnumerable<Request> acceptedRequests;
+
+
     //private IEnumerable<GiftModel> gifts = new GiftModel[]
     //    {
     //        new GiftModel(){ 
@@ -62,7 +98,11 @@
     {
         base.OnInitialized();
         if(_userService.LoggedIn)
+        {
+            pendingRequests = _giftService.PendingRequests(_userService.CurrentUser.Id);
+            acceptedRequests = _giftService.RequestsAccepted(_userService.CurrentUser.Id);
             gifts = _giftService.GetGifts(_userService.CurrentUser.Id);
+        }
     }
 
     private void HandleValidLogin()
@@ -71,7 +111,11 @@
         {
             _userService.Login(loginUser.Email, loginUser.Password);
             if(_userService.LoggedIn)
+            {
+                pendingRequests = _giftService.PendingRequests(_userService.CurrentUser.Id);
+                acceptedRequests = _giftService.RequestsAccepted(_userService.CurrentUser.Id);
                 gifts = _giftService.GetGifts(_userService.CurrentUser.Id);
+            }
         }
         catch (Exception ex) { Console.WriteLine(ex.ToString()); }
     }
@@ -81,5 +125,20 @@
     private void ClickedOnReceivedGift(Guid givenGiftId)
     {
         _giftService.RequestGiftActivation(givenGiftId);
+    }
+
+    private void AcceptRequest(Request request)
+    {
+        _giftService.ResponseToGiftActivation(request, RequestStateEnum.RequestApproved);
+    }
+
+    private void DeclineRequest(Request request)
+    {
+        _giftService.ResponseToGiftActivation(request, RequestStateEnum.RequestDenied);
+    }
+
+    private void StartAcceptRequest(Request request)
+    {
+        _giftService.ActivateGift(request);
     }
 }
