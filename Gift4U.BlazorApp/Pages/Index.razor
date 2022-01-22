@@ -1,27 +1,85 @@
 ﻿@page "/"
+@inject UserService _userService
+@inject GiftService _giftService
 
-<h1>Saadut lahjat</h1>
-@foreach (var gift in gifts)
+@if(_userService.LoggedIn)
 {
-    <img src="@gift.ImageSource" width="400"/>
-    <br/>
-    <p>
-        @gift.GiftName - @gift.GiftAmount @gift.GiftUnit
-    </p>
+    <h1>Saadut lahjat</h1>
+    @foreach (var gift in gifts)
+    {
+        <div @onclick="@(() => ClickedOnReceivedGift(@gift.Id))">
+            <img src="data:image/png;base64, @gift.Gift.Image" width="400"/>
+            <br/>
+            <p>
+                @gift.Gift.Name - @gift.Amount
+            </p>
+        </div>
+    }
+    <button type="button" @onclick="Logout">Logout</button>
 }
+@if(!_userService.LoggedIn)
+{
+    <h2>Login</h2>
+    <EditForm Model="@loginUser" OnValidSubmit="@HandleValidLogin">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <table>
+            <tbody>
+                <tr>
+                    <td style="text-align:right">Email: </td>
+                    <td><InputText id="email" placeholder="name@email.com" @bind-Value="loginUser.Email" /></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right">Password: </td>
+                    <td><InputText type="password" placeholder="Password" @bind-Value="@loginUser.Password" /></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="submit">Login</button>
+    </EditForm>
+}
+<br/>
 
 @code {
-    private IEnumerable<GiftModel> gifts = new GiftModel[]
+    private LoginUserModel loginUser = new();
+    private IEnumerable<GivenGift> gifts;
+    //private IEnumerable<GiftModel> gifts = new GiftModel[]
+    //    {
+    //        new GiftModel(){ 
+    //            ImageSource = "images/ExampleImage_1.png",
+    //            GiftName = "Example Gift 1",
+    //            GiftAmount = "48",
+    //            GiftUnit = "pce" },
+    //        new GiftModel(){ 
+    //            ImageSource = "images/ExampleImage_2.png",
+    //            GiftName = "Example Gift 2",
+    //            GiftAmount = "6",
+    //            GiftUnit = "pce" }
+    //    };
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if(_userService.LoggedIn)
+            gifts = _giftService.GetGifts(_userService.CurrentUser.Id);
+    }
+
+    private void HandleValidLogin()
+    {
+        try
         {
-            new GiftModel(){ 
-                ImageSource = "images/ExampleImage_1.png",
-                GiftName = "Example Gift 1",
-                GiftAmount = "48",
-                GiftUnit = "pce" },
-            new GiftModel(){ 
-                ImageSource = "images/ExampleImage_2.png",
-                GiftName = "Example Gift 2",
-                GiftAmount = "6",
-                GiftUnit = "pce" }
-        };
+            _userService.Login(loginUser.Email, loginUser.Password);
+            if(_userService.LoggedIn)
+                gifts = _giftService.GetGifts(_userService.CurrentUser.Id);
+        }
+        catch (Exception ex) { Console.WriteLine(ex.ToString()); }
+    }
+
+    private void Logout() => _userService.Logout();
+
+    private void ClickedOnReceivedGift(Guid givenGiftId)
+    {
+        _giftService.RequestGiftActivation(givenGiftId);
+    }
 }

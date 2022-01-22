@@ -19,8 +19,12 @@ namespace Gift4U.Application.Services
             //giftDBContext?.Database.Migrate();
         }
 
-        public void GiveGift(User from, User to, Gift gift, int amount)
+        public void GiveGift(Guid fromId, Guid toId, Guid giftId, int amount)
         {
+            var from = _giftDBContext.Users.First(u => u.Id == fromId);
+            var to = _giftDBContext.Users.First(u => u.Id == toId);
+            var gift = _giftDBContext.Gifts.First(u => u.Id == giftId);
+
             _giftDBContext.GivenGifts.Add(new GivenGift()
             {
                 Gift = gift,
@@ -51,6 +55,16 @@ namespace Gift4U.Application.Services
             return _giftDBContext.Gifts;
         }
 
+        public IEnumerable<GivenGift> GetGifts(Guid userId)
+        {
+            // Why are these laods needed?
+            _giftDBContext.Gifts.Load();
+            _giftDBContext.Users.Load();
+            _giftDBContext.GivenGifts.Load();
+            var result = _giftDBContext.GivenGifts.Where(gg => gg.ReceiverId == userId);
+            return result;
+        }
+
         public void DeleteGift(Gift gift)
         {
             _giftDBContext.Gifts.Remove(gift);
@@ -77,8 +91,16 @@ namespace Gift4U.Application.Services
                 r.RequestState.Name != nameof(RequestStateEnum.Pending));
         }
 
-        public void RequestGiftActivation(GivenGift gift)
+        public void RequestGiftActivation(Guid givenGiftId)
         {
+            var gift = _giftDBContext.GivenGifts.First(gg => gg.Id == givenGiftId);
+            var giftPending = _giftDBContext.Requests.First(r => r.GivenInRequestId == givenGiftId);
+            if (giftPending != null)
+            {
+                // Already pending
+                return;
+            }
+
             var pendingState = _giftDBContext.RequestStates
                 .Where(rs => rs.Name == nameof(RequestStateEnum.Pending))
                 .First();

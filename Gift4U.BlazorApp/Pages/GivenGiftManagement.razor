@@ -1,0 +1,101 @@
+﻿@page "/givenGifts"
+@inject UserService _userService
+@inject GiftService _giftService
+@using Infrastructure
+
+
+<PageTitle>Given gift management</PageTitle>
+
+
+<h2>Give gift</h2>
+<EditForm Model="@givenGift" OnValidSubmit="@HandleValidGivenGiftSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <table>
+        <tbody>   
+            <tr>
+                <td style="text-align:right">Gift for: </td>
+                <InputSelect id="receiver" placeholder="Receiver of the gift" @bind-Value="givenGift.ReceiverId" DisplayName=FirstName>
+                    @foreach(var receiverCandidate in otherUsers)
+                    {
+                        <option value="@receiverCandidate.Id">@receiverCandidate.FirstName @receiverCandidate.LastName</option>
+                    }
+                </InputSelect>
+            </tr>
+            <tr>
+                <td style="text-align:right">Gift: </td>
+                <InputSelect id="gift" placeholder="Gift to give" @bind-Value="givenGift.GiftId">
+                    @foreach(var availableGift in availableGifts)
+                    {
+                        <option value="@availableGift.Id">@availableGift.Name <img src="data:image/png;base64, @availableGift.Image"/></option>
+                    }
+                </InputSelect>
+            </tr>
+            <tr>
+                <td style="text-align:right">Amount: </td>
+                <td><InputNumber @bind-Value="givenGift.Amount"/></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Give</button>
+</EditForm>
+<br/>
+
+
+<h2>Given gifts</h2>
+<table>
+    <thead>
+        <tr>
+            <th> Receiver </th>
+            <th> Gift Name </th>
+            <th> Amount </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var gift in _giftService.GetGifts())
+        {
+            <tr>
+                <td> <img src="data:image/png;base64, @gift.Image" height="64"/></td>
+                <td>@gift.Name</td>
+                <td>@gift.Duration</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<br/>
+
+@code {
+    private GiveGiftModel givenGift = new();
+
+    private IEnumerable<User> otherUsers;
+    private IEnumerable<Gift> availableGifts;
+    /*private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 16777216; //1024 * 15;
+    private int maxAllowedFiles = 3;
+    private bool isLoading;
+    private string loadedImageBase64;
+    private string loadedThumbnailBase64;
+    */
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        otherUsers = _userService
+            .GetUsers()
+            .Where(u => u.Id != _userService.CurrentUser.Id);
+
+        availableGifts = _giftService.GetGifts();
+    }
+
+    private void HandleValidGivenGiftSubmit()
+    {
+        // TODO Confirmation popup
+        _giftService.GiveGift(
+            _userService.CurrentUser.Id, 
+            givenGift.ReceiverId, 
+            givenGift.GiftId, 
+            givenGift.Amount);
+    }
+}

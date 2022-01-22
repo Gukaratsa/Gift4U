@@ -12,7 +12,7 @@ namespace Gift4U.Domain.Models
         public DateTime Requested { get; set; }
         public DateTime? Responded { get; set; }
         public DateTime? Started { get; set; }
-
+        
         public Guid RequestStateId{get; set;}
         public RequestState RequestState {get; set;}
         public Guid GivenInRequestId { get; set;}
