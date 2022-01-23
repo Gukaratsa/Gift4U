@@ -27,7 +27,8 @@
             </tr>
             <tr>
                 <td style="text-align:right">Duration: </td>
-                <td><InputText @bind-Value="gift.Duration"/></td>
+                @*<td><input type="time" @bind-value="@gift.Duration"/></td>*@
+                <td><InputNumber @bind-Value="gift.Duration"/></td>
             </tr>
         </tbody>
     </table>
@@ -215,7 +216,10 @@
 
     private void HandleValidGiftSubmit()
     {
-        _giftService.AddGift(gift.GiftName, loadedImageBase64);
+        if(gift.HasDuration)
+            _giftService.AddGift(gift.GiftName, loadedImageBase64, gift.Duration);
+        else
+            _giftService.AddGift(gift.GiftName, loadedImageBase64);
     }
 
     private void DeleteGift(Gift gift)

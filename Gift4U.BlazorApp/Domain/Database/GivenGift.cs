@@ -12,6 +12,7 @@ namespace Gift4U.Domain.Models
         public Guid GiftId { get; set; }
         public Gift Gift { get; set; }
         public int Amount { get; set; }
+        public int Used { get; set; }
         public Guid ReceiverId { get; set; }
         public User Receiver { get; set; }
         public Guid GiverId { get; set; }

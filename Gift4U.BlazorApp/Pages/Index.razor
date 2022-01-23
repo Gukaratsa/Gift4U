@@ -1,10 +1,20 @@
 ﻿@page "/"
 @inject UserService _userService
 @inject GiftService _giftService
+@inject GiftStore _giftStore
+@inject TimerStore _timerStore
 
 @if(_userService.LoggedIn)
 {
-    if (pendingRequests.Count() > 0)
+    if(TimerEnabled)
+    {
+        <p>
+            Timer <br/>
+            @_timerStore.GetState().CurrentTime <br/>
+            @_timerStore.GetState().TotalTime <br/>
+        </p>
+    }
+    else if (pendingRequests != null && pendingRequests.Count() > 0)
     {
         <h1>Odottavat pyynnöt</h1>
         @foreach (var pendingRequest in pendingRequests)
@@ -12,14 +22,14 @@
             <img src="data:image/png;base64, @pendingRequest.GivenInRequest.Gift.Image" width="400"/>
             <br/>
             <p>
-                @pendingRequest.GivenInRequest.Receiver.Email is requesting @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Amount / WheresTheUsedAmount)
+                @pendingRequest.GivenInRequest.Receiver.Email is requesting @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Used/@pendingRequest.GivenInRequest.Amount)
             </p>
             <button type="button" @onclick="@(() => AcceptRequest(pendingRequest))">Accept</button>
             <button type="button" @onclick="@(() => DeclineRequest(pendingRequest))">Decline</button>
             <br/>
         }
     }
-    else if(acceptedRequests.Count() > 0)
+    else if(acceptedRequests != null && acceptedRequests.Count() > 0)
     {
         <h1>Hyväksytyt pyynnöt</h1>
         @foreach (var pendingRequest in acceptedRequests)
@@ -27,7 +37,7 @@
             <img src="data:image/png;base64, @pendingRequest.GivenInRequest.Gift.Image" width="400"/>
             <br/>
             <p>
-                @pendingRequest.GivenInRequest.Receiver.Email is requesting @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Amount / WheresTheUsedAmount)
+                @pendingRequest.GivenInRequest.Receiver.Email has accepted @pendingRequest.GivenInRequest.Gift.Name (@pendingRequest.GivenInRequest.Used/@pendingRequest.GivenInRequest.Amount)
             </p>
             <button type="button" @onclick="@(() => StartAcceptRequest(pendingRequest))">Start</button>
             <br/>
@@ -39,14 +49,21 @@
         @foreach (var gift in gifts)
         {
             <div @onclick="@(() => ClickedOnReceivedGift(@gift.Id))">
-                <img src="data:image/png;base64, @gift.Gift.Image" width="400"/>
+                <div class="container" style="position: relative; left: 0; top: 0;">
+                    <img src="data:image/png;base64, @gift.Gift.Image" width="400"/>
+                    @if (@gift.Requests != null && @gift.Requests.Count(r => r.RequestState.Name == nameof(RequestStateEnum.Pending)) > 0)
+                    {
+                        <div class="centered">PENDING</div>
+                    }
+                </div>
                 <br/>
-                <p>
-                    @gift.Gift.Name - @gift.Amount
-                </p>
+                <div class="container">
+                    @gift.Gift.Name - @gift.Used/@gift.Amount
+                </div>
             </div>
         }
     }
+
     <button type="button" @onclick="Logout">Logout</button>
 }
 @if(!_userService.LoggedIn)
@@ -79,6 +96,13 @@
     private IEnumerable<Request> pendingRequests;
     private IEnumerable<Request> acceptedRequests;
 
+    private IObserver<GiftState> giftObserver;
+    private IDisposable giftUnsubscriper;
+
+    private IObserver<TimerState> timerObserver;
+    private IDisposable timerUnsubscriper;
+
+    private bool TimerEnabled = false;
 
     //private IEnumerable<GiftModel> gifts = new GiftModel[]
     //    {
@@ -103,6 +127,101 @@
             acceptedRequests = _giftService.RequestsAccepted(_userService.CurrentUser.Id);
             gifts = _giftService.GetGifts(_userService.CurrentUser.Id);
         }
+
+        giftObserver = new Observer<GiftState>(
+            async(cs) => 
+            {
+            // If current user is either receiver or giver update view
+            if (_userService.LoggedIn &&
+                            (cs.ActivatorId == _userService.CurrentUser.Id ||
+                            cs.ReceiverId == _userService.CurrentUser.Id))
+                    if (cs.NewState == RequestStateEnum.RequestStarted)
+                        StartTimer(cs.GivenGiftId);
+                await InvokeAsync(() => { StateHasChanged(); });
+            },
+            (ex) => Console.WriteLine(ex.ToString()),
+            () => Console.WriteLine("Completed gift state"));
+
+        giftUnsubscriper = _giftStore.Subscribe(giftObserver);
+
+        timerObserver = new Observer<TimerState>(
+            async (cs) =>
+            { 
+                if(_userService.LoggedIn &&
+                    (cs.GiverId == _userService.CurrentUser.Id ||
+                    cs.ReceiverId == _userService.CurrentUser.Id))
+                    await InvokeAsync(() => 
+                    {
+                        TimerEnabled = true;
+                        StateHasChanged(); 
+                    });
+            },
+            (ex) => Console.WriteLine(ex.ToString()),
+            async () =>
+            {
+                await InvokeAsync(() =>
+                {
+                    TimerEnabled = false;
+                    StateHasChanged();
+                });
+            });
+
+        giftUnsubscriper = _timerStore.Subscribe(timerObserver);
+    }
+
+    private TimeSpan? giftDuration;    
+    private TimeSpan? usedDuration;
+    private void StartTimer(Guid givenGiftId)
+    {
+        var givenGift = _giftService.GetGivenGift(givenGiftId);
+        var duration = _giftService.GetGiftDuration(givenGift.GiftId);
+        if (duration != null)
+        {
+            giftDuration = duration;
+            usedDuration = TimeSpan.FromSeconds(0);
+
+            _timerStore.Broadcast_Change(
+                givenGift.GiverId,
+                givenGift.ReceiverId,
+                givenGift.Id,
+                false,
+                false,
+                usedDuration.Value,
+                giftDuration.Value);
+
+            System.Timers.Timer tmr = new System.Timers.Timer(1000);
+            tmr.Elapsed += ((sender, e) =>
+            {
+                usedDuration += TimeSpan.FromSeconds(1);
+                if(usedDuration >= giftDuration)
+                {
+                    var tmr = (System.Timers.Timer)sender;
+                    tmr.Stop();
+                    tmr.Dispose();
+
+                    _timerStore.Broadcast_Change(
+                        givenGift.GiverId,
+                        givenGift.ReceiverId,
+                        givenGift.Id,
+                        false,
+                        true,
+                        usedDuration.Value,
+                        giftDuration.Value);
+                }
+                else
+                {
+                    _timerStore.Broadcast_Change(
+                        givenGift.GiverId,
+                        givenGift.ReceiverId,
+                        givenGift.Id,
+                        false,
+                        false,
+                        usedDuration.Value,
+                        giftDuration.Value);
+                };
+            });
+            tmr.Start();
+        }
     }
 
     private void HandleValidLogin()
@@ -124,21 +243,35 @@
 
     private void ClickedOnReceivedGift(Guid givenGiftId)
     {
-        _giftService.RequestGiftActivation(givenGiftId);
+        var request = _giftService.RequestGiftActivation(givenGiftId);
+        if(request != null)
+            BroadcastGiftStateChange(request, RequestStateEnum.Pending);
     }
 
     private void AcceptRequest(Request request)
     {
         _giftService.ResponseToGiftActivation(request, RequestStateEnum.RequestApproved);
+        BroadcastGiftStateChange(request, RequestStateEnum.RequestApproved);
     }
 
     private void DeclineRequest(Request request)
     {
         _giftService.ResponseToGiftActivation(request, RequestStateEnum.RequestDenied);
+        BroadcastGiftStateChange(request, RequestStateEnum.RequestDenied);
     }
 
     private void StartAcceptRequest(Request request)
     {
         _giftService.ActivateGift(request);
+        BroadcastGiftStateChange(request, RequestStateEnum.RequestStarted);
+    }
+
+    private void BroadcastGiftStateChange(Request request, RequestStateEnum requestStateEnum)
+    {
+          _giftStore.Broadcast_Change(
+           request.GivenInRequest.GiverId,
+           request.GivenInRequest.ReceiverId,
+           request.GivenInRequest.Id,
+           requestStateEnum);
     }
 }

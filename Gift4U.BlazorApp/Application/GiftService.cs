@@ -50,6 +50,18 @@ namespace Gift4U.Application.Services
             _giftDBContext.SaveChanges();
         }
 
+        public void AddGift(string Name, string ImageBase64, double Duration)
+        {
+            _giftDBContext.Gifts.Add(new Gift()
+            {
+                Id = Guid.NewGuid(),
+                Name = Name,
+                Image = ImageBase64,
+                Duration = TimeSpan.FromMinutes(Duration)
+            });
+            _giftDBContext.SaveChanges();
+        }
+
         public IEnumerable<Gift> GetGifts()
         {
             return _giftDBContext.Gifts;
@@ -61,7 +73,19 @@ namespace Gift4U.Application.Services
             _giftDBContext.Gifts.Load();
             _giftDBContext.Users.Load();
             _giftDBContext.GivenGifts.Load();
+            _giftDBContext.RequestStates.Load();
+            _giftDBContext.Requests.Load();
             var result = _giftDBContext.GivenGifts.Where(gg => gg.ReceiverId == userId);
+            return result;
+        }
+
+        public GivenGift GetGivenGift(Guid GivenGiftId)
+        {
+            // Why are these laods needed?
+            _giftDBContext.Gifts.Load();
+            _giftDBContext.Users.Load();
+            _giftDBContext.GivenGifts.Load();
+            var result = _giftDBContext.GivenGifts.First(g => g.Id == GivenGiftId);
             return result;
         }
 
@@ -97,7 +121,7 @@ namespace Gift4U.Application.Services
                 r.RequestState.Name != nameof(RequestStateEnum.Pending));
         }
 
-        public void RequestGiftActivation(Guid givenGiftId)
+        public Request RequestGiftActivation(Guid givenGiftId)
         {
             var gift = _giftDBContext.GivenGifts.First(gg => gg.Id == givenGiftId);
             var pendingStatus = _giftDBContext.RequestStates.First(rs => rs.Name == nameof(RequestStateEnum.Pending));
@@ -105,7 +129,7 @@ namespace Gift4U.Application.Services
             if (giftPending != null)
             {
                 // Already pending
-                return;
+                return null;
             }
 
             var pendingState = _giftDBContext.RequestStates
@@ -120,6 +144,7 @@ namespace Gift4U.Application.Services
                 RequestState = pendingState,                
             });
             _giftDBContext.SaveChanges();
+            return _giftDBContext.Requests.First(r => r.GivenInRequestId == givenGiftId && r.RequestStateId == pendingStatus.Id);
         }
 
         public void ResponseToGiftActivation(Request request, RequestStateEnum requestResponse)
@@ -151,8 +176,17 @@ namespace Gift4U.Application.Services
                 .First();
 
             request.RequestState = pendingState;
+            request.GivenInRequest.Used += 1;
             request.Started = DateTime.Now;
             _giftDBContext.SaveChanges();
+        }
+
+        public TimeSpan? GetGiftDuration(Guid giftId)
+        {
+            var gift = _giftDBContext.Gifts.FirstOrDefault(g => g.Id == giftId);
+            if (gift == null)
+                return null;
+            return gift.Duration;
         }
     }
 }

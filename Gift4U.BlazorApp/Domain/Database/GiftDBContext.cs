@@ -50,6 +50,10 @@ namespace Gift4U.Domain.Models
                 .WithMany(g => g.GivenGifts)
                 .HasForeignKey(s => s.GiftId);
 
+            modelBuilder.Entity<GivenGift>()
+                .Property(s => s.Used)
+                .HasDefaultValue(0);
+
             modelBuilder.Entity<Request>()
                 .HasKey(s => s.Id);
 

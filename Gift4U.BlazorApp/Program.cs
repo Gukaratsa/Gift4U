@@ -21,6 +21,8 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<CounterStore>();
+builder.Services.AddSingleton<GiftStore>();
+builder.Services.AddSingleton<TimerStore>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<GiftService>();
 
