@@ -35,7 +35,7 @@ using (var dbSetupScope = app.Services.CreateScope())
 {
     dbSetupScope.ServiceProvider.GetService<GiftDBContext>().Database.Migrate();
 }
-
+    // new comment
     // Configure the HTTP request pipeline.
     if (!app.Environment.IsDevelopment())
     {
